@@ -53,18 +53,33 @@ let rec evaluate (ctx:VariableContext) e =
 
   // NOTE: You have the following from before
   | Unary(op, e) -> failwith "implemented in step 2"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 2"
+  | If(cond, tbranch, fbranch) ->
+    let vc = evaluate ctx cond
+    match vc with
+    | ValNum n ->
+      if n = 1 then
+        evaluate ctx tbranch
+      else
+        evaluate ctx fbranch
   | Lambda(v, e) -> failwith "implemented in step 3"
   | Application(e1, e2) -> failwith "implemented in step 3"
   | Let(v, e1, e2) -> failwith "implemented in step 4"
 
   | Tuple(e1, e2) ->
       // TODO: Construct a tuple value here!
-      failwith "not implemented"
+      let n1 = evaluate ctx e1
+      let n2 = evaluate ctx e2
+      ValTuple(n1, n2)
+      
   | TupleGet(b, e) ->
       // TODO: Access #1 or #2 element of a tuple value.
       // (If the argument is not a tuple, this fails.)
-      failwith "not implemented"
+      let v = evaluate ctx e
+      match v with
+      | ValTuple(v1, v2) ->
+        if b = true then v1
+        else v2
+      | _ -> failwith "not a valid argument, need a tuple"
 
 // ----------------------------------------------------------------------------
 // Test cases

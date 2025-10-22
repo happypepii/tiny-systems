@@ -64,11 +64,17 @@ let rec evaluate (ctx:VariableContext) e =
   | Match(e, v, e1, e2) ->
       // TODO: Implement pattern matching. Note you need to
       // assign the right value to the variable of name 'v'!
-      failwith "not implemented"
+      let determine = evaluate ctx e
+      match determine with
+      | ValCase(b, number) ->
+      let newCtx = ctx.Add(v, number)
+      if b = true then evaluate newCtx e1
+      else evaluate newCtx e2
 
   | Case(b, e) ->
       // TODO: Create a union value.
-      failwith "not implemented"
+      let n = evaluate ctx e
+      ValCase(b, n)
 
 // ----------------------------------------------------------------------------
 // Test cases

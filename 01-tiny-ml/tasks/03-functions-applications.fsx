@@ -47,24 +47,44 @@ let rec evaluate (ctx:VariableContext) e =
           | "+" -> ValNum(n1 + n2)
           | "*" -> ValNum(n1 * n2)
           | _ -> failwith "unsupported binary operator"
+      | _ -> failwith "invalid operand types for binary operator"
   | Variable(v) ->
       match ctx.TryFind v with 
       | Some res -> res
       | _ -> failwith ("unbound variable: " + v)
 
   // NOTE: You have the following two from before
-  | Unary(op, e) -> failwith "implemented in step 2"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 2"
+  | Unary(op, e) ->
+      // TODO: Implement the case for 'Unary' here!
+      let v = evaluate ctx e
+      match v with
+      | ValNum n ->
+      match op with
+        | "-" -> ValNum(-n)
+        | "abs" -> ValNum(abs(n))
+        | _ -> failwith "not implemented"
+  // TODO: Add the correct handling of 'If' here!
+  | If(cond, tbranch, fbranch) ->
+    let vc = evaluate ctx cond
+    match vc with
+    | ValNum n ->
+      if n = 1 then
+        evaluate ctx tbranch
+      else
+        evaluate ctx fbranch
   
   | Lambda(v, e) ->
       // TODO: Evaluate a lambda - create a closure value
-      failwith "not implemented"
+      ValClosure(v, e, ctx)
 
   | Application(e1, e2) ->
-      // TODO: Evaluate a function application. Recursively
-      // evaluate 'e1' and 'e2'; 'e1' must evaluate to a closure.
-      // You can then evaluate the closure body.
-      failwith "not implemented"
+    let vf = evaluate ctx e1
+    let va = evaluate ctx e2
+    match vf with
+    | ValClosure(param, body, closureCtx) ->
+        let newCtx = closureCtx.Add(param, va)
+        evaluate newCtx body
+    | _ -> failwith "attempted to apply a non-function value"
 
 // ----------------------------------------------------------------------------
 // Test cases

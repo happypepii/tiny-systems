@@ -43,17 +43,45 @@ let rec evaluate (ctx:VariableContext) e =
       | _ -> failwith ("unbound variable: " + v)
 
   // NOTE: You have the following from before
-  | Unary(op, e) -> failwith "implemented in step 2"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 2"
-  | Lambda(v, e) -> failwith "implemented in step 3"
-  | Application(e1, e2) -> failwith "implemented in step 3"
+  | Unary(op, e) ->
+      // TODO: Implement the case for 'Unary' here!
+      let v = evaluate ctx e
+      match v with
+      | ValNum n ->
+      match op with
+        | "-" -> ValNum(-n)
+        | "abs" -> ValNum(abs(n))
+        | _ -> failwith "not implemented"
+  // TODO: Add the correct handling of 'If' here!
+  | If(cond, tbranch, fbranch) ->
+    let vc = evaluate ctx cond
+    match vc with
+    | ValNum n ->
+      if n = 1 then
+        evaluate ctx tbranch
+      else
+        evaluate ctx fbranch
+  
+  | Lambda(v, e) ->
+      // TODO: Evaluate a lambda - create a closure value
+      ValClosure(v, e, ctx)
+
+  | Application(e1, e2) ->
+    let vf = evaluate ctx e1
+    let va = evaluate ctx e2
+    match vf with
+    | ValClosure(param, body, closureCtx) ->
+        let newCtx = closureCtx.Add(param, va)
+        evaluate newCtx body
+    | _ -> failwith "attempted to apply a non-function value"
 
   | Let(v, e1, e2) ->
     // TODO: There are two ways to do this! A nice tricky is to 
     // treat 'let' as a syntactic sugar and transform it to the
     // 'desugared' expression and evaluating that :-)
-    failwith "not implemented"
-
+    let value = evaluate ctx e1
+    let newCtx = ctx.Add(v, value)
+    evaluate newCtx e2
 // ----------------------------------------------------------------------------
 // Test cases
 // ----------------------------------------------------------------------------
