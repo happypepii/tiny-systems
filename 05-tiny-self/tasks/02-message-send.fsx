@@ -47,7 +47,18 @@ let makeNativeMethod f =
 
 // NOTE: Implemented in step #1
 let rec lookup (msg:string) (obj:Objekt) : list<Slot> = 
-  failwith "implemented in step 1"
+  // 1. Find matching slots in the current object
+  let local =
+    obj.Slots
+    |> List.filter (fun s -> s.Name = msg && not s.IsParent)
+    
+  // 2. Find matching slots in the parent objects
+  let inherited =
+    obj.Slots
+    |> List.filter (fun s -> s.IsParent)
+    |> List.collect (fun parentSlot -> lookup msg parentSlot.Contents)
+
+  local @ inherited
 
 
 // See also §3.3.7 (https://handbook.selflanguage.org/SelfHandbook2017.1.pdf)
@@ -69,13 +80,37 @@ let eval (slotValue:Objekt) (instance:Objekt) : Objekt =
   //
   // NOTE: Why do we set the receiver as parent of the activation record?
   // We can then send messages to it directly to access the receiver's slots!
-  failwith "TODO: not implemented"
+  match slotValue.Code with
+  | None ->
+      // data slot: just return the object stored in the slot
+      slotValue
+
+  | Some codeObj ->
+      match codeObj.Special with
+      | Some (Native f) ->
+          // Clone codeObj → activation record
+          let activation =
+            { codeObj with Slots = codeObj.Slots }
+
+          // Add receiver*
+          activation.Slots <- makeParentSlot "receiver*" instance :: activation.Slots
+
+          // Call native function
+          f activation
+
+      | _ ->
+          failwith "Non-special code not supported yet"
 
 
 let send (msg:string) (instance:Objekt) : Objekt =
   // TODO: Use 'lookup' to find slots with the name of the message 'msg'. If
   // there is exactly one, evaluate it using 'eval', otherwise report an error.
-  failwith "TODO: not implemented"
+  let slots = lookup msg instance
+  match slots with
+  | [slot] -> eval slot.Contents instance
+  | [] -> failwith $"Message '{msg}' not found"
+  | _ -> failwith $"Ambiguous message '{msg}'"
+  
 
 
 // ----------------------------------------------------------------------------
@@ -85,11 +120,14 @@ let send (msg:string) (instance:Objekt) : Objekt =
 // TODO: Now we can reimplement 'getStringValue' using ordinary 'send'
 // that follows the standard Self semantics (rather than directly)
 let getStringValue (obj:Objekt) : string = 
-  failwith "TODO: not implemented"
+  match obj.Special with
+  | Some (String s) -> s
+  | Some (Native _) -> failwith "Expected a string but found a native function."
+  | None -> failwith "Object is not a special string."
 
 
 // TODO: Define empty object with no data in it (needed below)
-let empty : Objekt = failwith "TODO: not implemented"
+let empty : Objekt = makeObject []
 
 let printCode = makeNativeMethod (fun arcd ->
   // TODO: Print the string value! To get the string, you can send 'value' 
@@ -99,7 +137,12 @@ let printCode = makeNativeMethod (fun arcd ->
   // 
   // As the first step, see what you actually pass to the method by
   // visualizing the activation record (arcd) using 'Vis.printObjectTree'!
-  failwith "TODO: not implemented"
+  // arcd has a parent slot receiver* -> instance
+  let valueObj = send "value" arcd
+  let s = getStringValue valueObj
+  printfn "%s" s
+
+  empty
 )
 
 
@@ -111,7 +154,7 @@ let makeString s =
     makeSlot "value" (makeSpecialObject (String s)) 
     // TODO: Make 'stringPrototype' a parent of this string 
     // object so that we can send the 'print' message to it!
-    failwith "TODO: add a slot here"
+    makeParentSlot "prototype*" stringPrototype
   ]
 
 // ----------------------------------------------------------------------------
@@ -160,7 +203,11 @@ larry |> send "book" |> send "print"
 let wonderland = makeObject [
   makeSlot "book" (makeString "Alice in Wonderland")
 ]
-let cheshire = failwith "implemented in step 1"
+let cheshire =  makeObject [
+  makeSlot "name" (makeString "cheshire")
+  makeParentSlot "cat*" cat
+  makeParentSlot "wonderland*" wonderland
+]
 
 // All of these should be OK!
 cheshire |> send "name" |> send "print"
