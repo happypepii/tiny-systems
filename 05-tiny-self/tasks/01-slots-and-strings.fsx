@@ -69,7 +69,20 @@ let rec lookup (msg:string) (obj:Objekt) : list<Slot> =
   // * If there is a slot named 'msg' in 'obj', return that 
   // * Otherwise, return all slots named 'msg' slots in objects 
   //   contained in all the parent slots of 'obj' (concatenate them)
-  failwith "TODO: not implemented"
+  
+  // 1. Find matching slots in the current object
+  let local =
+    obj.Slots
+    |> List.filter (fun s -> s.Name = msg && not s.IsParent)
+    
+  // 2. Find matching slots in the parent objects
+  let inherited =
+    obj.Slots
+    |> List.filter (fun s -> s.IsParent)
+    |> List.collect (fun parentSlot -> lookup msg parentSlot.Contents)
+
+  local @ inherited
+
 
 // ----------------------------------------------------------------------------
 // Helpers for testing & object construction
@@ -88,14 +101,25 @@ let lookupSlotValue (msg:string) (obj:Objekt) : Objekt  =
   // TODO: Find the slot named 'n' in the object 'o' and return its contents
   // Call 'lookup' to find the possible slots. If there is one, return its contents.
   // If there are more, raise an exception using failwith. 
-  failwith "TODO: not implemented"
+  let results = lookup msg obj
+  match results with
+  | [slot] -> slot.Contents  // only one
+  | [] -> failwith $"Message '{msg}' not found"
+  | _ -> failwith $"Multiple slots '{msg}' found"
+
 
 // Get the actual string value from a string object (or fail)
 let getStringValue (obj:Objekt) : string = 
   // TODO: Get the value of 'value' slot using 'lookupSlotValue'
   // This should be an object that has 'Special' set to 'Some str'
   // Return the string value!
-  failwith "TODO: not implemented"
+  // first get the "value" slot
+  let valObj = lookupSlotValue "value" obj
+
+  match valObj.Special with
+  | Some (String s) -> s
+  | _ -> failwith "Not a string object"
+
 
 // Ad-hoc helper for testing that prints a string result of 'lookup'
 let printStringSlot slots = 
@@ -141,6 +165,7 @@ let larry = makeObject [
   makeParentSlot "parent*" cat
   makeSlot "name" (makeString "Larry")
 ]
+Vis.printObjectTree cat
 Vis.printObjectTree larry
 
 // Larry has name & sound, but no book!
@@ -154,7 +179,12 @@ larry |> lookup "book" |> printStringSlot
 let wonderland = makeObject [
   makeSlot "book" (makeString "Alice in Wonderland")
 ]
-let cheshire = failwith "TODO: not implemented"
+let cheshire =  makeObject [
+  makeSlot "name" (makeString "cheshire")
+  makeParentSlot "cat*" cat
+  makeParentSlot "wonderland*" wonderland
+]
+
 Vis.printObjectTree cheshire
 
 // All of these should be OK!
