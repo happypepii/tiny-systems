@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+*.cache
+*.tmp
+*.log
+*.lock.json
+**/node_modules/
+
+
