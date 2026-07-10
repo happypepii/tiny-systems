@@ -62,7 +62,7 @@ let rec evaluate (ctx:VariableContext) e =
         | "-" -> ValNum (-n)
         | "!" -> if n = 0 then ValNum 1 else ValNum 0
         | _   -> failwith ("unsupported unary operator: " + op)
-      | ValClosure _ -> failwith "unary operator cannot be applied on closures"
+      | _ -> failwith "unary operator cannot be applied"
   // TODO: Add the correct handling of 'If' here!
   | If(cond, tb, fb) ->
     let vCond = evaluate ctx cond  
@@ -72,7 +72,7 @@ let rec evaluate (ctx:VariableContext) e =
         evaluate ctx tb 
       else 
         evaluate ctx fb
-    | ValClosure _ -> failwith "closures cannot be evaluated as conditional branch"
+    | _ -> failwith "not a condition"
     
   
   | Lambda(v, e) ->
@@ -101,12 +101,19 @@ let rec evaluate (ctx:VariableContext) e =
 
   | Tuple(e1, e2) ->
       // TODO: Construct a tuple value here!
-      failwith "not implemented"
+      let v1 = evaluate ctx e1
+      let v2 = evaluate ctx e2
+      ValTuple(v1, v2)
   | TupleGet(b, e) ->
       // TODO: Access #1 or #2 element of a tuple value.
       // (If the argument is not a tuple, this fails.)
-      failwith "not implemented"
-
+      let t = evaluate ctx e
+      match t with
+      | ValTuple(v1, v2) ->
+        match b with
+        | true -> v1
+        | false -> v2
+      | _ -> failwith "not a tuple" 
 // ----------------------------------------------------------------------------
 // Test cases
 // ----------------------------------------------------------------------------
