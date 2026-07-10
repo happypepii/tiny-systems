@@ -52,11 +52,52 @@ let rec evaluate (ctx:VariableContext) e =
       | _ -> failwith ("unbound variable: " + v)
 
   // NOTE: You have the following from before
-  | Unary(op, e) -> failwith "implemented in step 2"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 2"
-  | Lambda(v, e) -> failwith "implemented in step 3"
-  | Application(e1, e2) -> failwith "implemented in step 3"
-  | Let(v, e1, e2) -> failwith "implemented in step 4"
+  // NOTE: You have the following two from before
+  | Unary(op, e) ->
+      // TODO: Implement the case for 'Unary' here!
+      let v = evaluate ctx e
+      match v with
+      | ValNum n ->
+        match op with
+        | "-" -> ValNum (-n)
+        | "!" -> if n = 0 then ValNum 1 else ValNum 0
+        | _   -> failwith ("unsupported unary operator: " + op)
+      | ValClosure _ -> failwith "unary operator cannot be applied on closures"
+  // TODO: Add the correct handling of 'If' here!
+  | If(cond, tb, fb) ->
+    let vCond = evaluate ctx cond  
+    match vCond with
+    | ValNum c -> 
+      if c = 1 then 
+        evaluate ctx tb 
+      else 
+        evaluate ctx fb
+    | ValClosure _ -> failwith "closures cannot be evaluated as conditional branch"
+    
+  
+  | Lambda(v, e) ->
+      // TODO: Evaluate a lambda - create a closure value
+      ValClosure(v, e, ctx)      
+
+  | Application(e1, e2) ->
+      // TODO: Evaluate a function application. Recursively
+      // evaluate 'e1' and 'e2'; 'e1' must evaluate to a closure.
+      // You can then evaluate the closure body.
+      let v1 = evaluate ctx e1
+      let v2 = evaluate ctx e2
+      match v1 with
+      | ValClosure(paramName, body, capturedCtx) ->
+        let newCtx = Map.add paramName v2 capturedCtx
+        evaluate newCtx body
+      | _ -> failwith "for ValClosure only"
+  
+  | Let(v, e1, e2) ->
+    // TODO: There are two ways to do this! A nice tricky is to 
+    // treat 'let' as a syntactic sugar and transform it to the
+    // 'desugared' expression and evaluating that :-)
+    let value = evaluate ctx e1
+    let newCtx = Map.add v value ctx
+    evaluate newCtx e2
 
   | Tuple(e1, e2) ->
       // TODO: Construct a tuple value here!
