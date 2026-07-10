@@ -47,6 +47,7 @@ let rec evaluate (ctx:VariableContext) e =
           match op with 
           | "+" -> ValNum(n1 + n2)
           | "*" -> ValNum(n1 * n2)
+          | "%" -> ValNum(n1 % n2)
           | _ -> failwith "unsupported binary operator"
       | _ -> failwith "invalid argument of binary operator"
   | Variable(v) ->
@@ -55,17 +56,96 @@ let rec evaluate (ctx:VariableContext) e =
       | _ -> failwith ("unbound variable: " + v)
 
   // NOTE: You have the following from before
-  | Unary(op, e) -> failwith "implemented in step 2"
-  | If(econd, etrue, efalse) -> failwith "implemented in step 2"
-  | Lambda(v, e) -> failwith "implemented in step 3"
-  | Application(e1, e2) -> failwith "implemented in step 3"
-  | Let(v, e1, e2) -> failwith "implemented in step 4"
-  | Tuple(e1, e2) -> failwith "implemented in step 5"
-  | TupleGet(b, e) -> failwith "implemented in step 5"
-  | Match(e, v, e1, e2) -> failwith "implemented in step 6"
-  | Case(b, e) -> failwith "implemented in step 6"
-  | Recursive(v, e1, e2) -> failwith "implemented in step 7"
+  | Unary(op, e) ->
+      // TODO: Implement the case for 'Unary' here!
+      let v = evaluate ctx e
+      match v with
+      | ValNum n ->
+        match op with
+        | "-" -> ValNum (-n)
+        | "!" -> if n = 0 then ValNum 1 else ValNum 0
+        | _   -> failwith ("unsupported unary operator: " + op)
+      | _ -> failwith "unary operator cannot be applied"
+  // TODO: Add the correct handling of 'If' here!
+  | If(cond, tb, fb) ->
+    let vCond = evaluate ctx cond  
+    match vCond with
+    | ValNum c -> 
+      if c = 1 then 
+        evaluate ctx tb 
+      else 
+        evaluate ctx fb
+    | _ -> failwith "not a condition"
+    
+  
+  | Lambda(v, e) ->
+      // TODO: Evaluate a lambda - create a closure value
+      ValClosure(v, e, ctx)      
 
+  | Application(e1, e2) ->
+      // TODO: Evaluate a function application. Recursively
+      // evaluate 'e1' and 'e2'; 'e1' must evaluate to a closure.
+      // You can then evaluate the closure body.
+      let v1 = evaluate ctx e1
+      let v2 = evaluate ctx e2
+      match v1 with
+      | ValClosure(paramName, body, capturedCtx) ->
+        let newCtx = Map.add paramName (lazy v2) capturedCtx
+        evaluate newCtx body
+      | _ -> failwith "for ValClosure only"
+  
+  | Let(v, e1, e2) ->
+    // TODO: There are two ways to do this! A nice tricky is to 
+    // treat 'let' as a syntactic sugar and transform it to the
+    // 'desugared' expression and evaluating that :-)
+    let value = lazy (evaluate ctx e1)
+    let newCtx = Map.add v value ctx
+    evaluate newCtx e2
+
+  | Tuple(e1, e2) ->
+      // TODO: Construct a tuple value here!
+      let v1 = evaluate ctx e1
+      let v2 = evaluate ctx e2
+      ValTuple(v1, v2)
+  | TupleGet(b, e) ->
+      // TODO: Access #1 or #2 element of a tuple value.
+      // (If the argument is not a tuple, this fails.)
+      let t = evaluate ctx e
+      match t with
+      | ValTuple(v1, v2) ->
+        match b with
+        | true -> v1
+        | false -> v2
+      | _ -> failwith "not a tuple" 
+  | Match(e, v, e1, e2) ->
+      // TODO: Implement pattern matching. Note you need to
+      // assign the right value to the variable of name 'v'!
+      let ve = evaluate ctx e
+      match ve with
+      | ValCase(b, value) ->
+      let lazyValue = lazy value
+      let newCtx = Map.add v lazyValue ctx
+      
+      if b then
+        evaluate newCtx e1
+      else
+        evaluate newCtx e2
+      | _ -> failwith "not a case"
+
+  | Case(b, e) ->
+      // TODO: Create a union value.
+      let v = evaluate ctx e
+      ValCase(b, v)
+      
+  | Recursive(v, e1, e2) ->
+      // TODO: Implement recursion for 'let rec v = e1 in e2'.
+      // (In reality, this will only work if 'e1' is a function
+      // but the case can be implemented without assuming that).
+      let rec newCtx = 
+          let lazyVal = lazy (evaluate newCtx e1)
+          Map.add v lazyVal ctx
+      evaluate newCtx e2
+  
   // NOTE: This is so uninteresting I did this for you :-)
   | Unit -> ValUnit
 
@@ -127,5 +207,33 @@ evaluate Map.empty em
 //     | Case2(Unit) -> Case2(Unit))
 //   in filter (fun y -> y + (-2)) l
 //
-let ef = failwith "not implemented"
+
+let ef = 
+  Recursive("filter",
+    Lambda("f", Lambda("l", 
+      Match(
+        Variable("l"), "x", 
+        If(
+          Application(Variable "f", TupleGet(true, Variable "x")),
+          
+          // True branch, filter out odd numbers
+          Application(Application(Variable "filter", Variable "f"), TupleGet(false, Variable "x")),
+          
+          // False branch, keep even numbers
+          Case(true, Tuple(
+            TupleGet(true, Variable "x"),
+            Application(Application(Variable "filter", Variable "f"), TupleGet(false, Variable "x"))
+          ))
+        ),
+        Case(false, Unit)
+      )
+    )),
+    Application(
+      Application(Variable "filter", 
+        Lambda("y", Binary("%", Variable "y", Constant 2))
+      ), 
+      el
+    )
+  )
+
 evaluate Map.empty ef
