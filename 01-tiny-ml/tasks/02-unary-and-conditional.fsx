@@ -45,8 +45,22 @@ let rec evaluate (ctx:VariableContext) e =
       | _ -> failwith ("unbound variable: " + v)
   | Unary(op, e) ->
       // TODO: Implement the case for 'Unary' here!
-      failwith "not implemented"
+      let v = evaluate ctx e
+      match v with
+      | ValNum n ->
+        match op with
+        | "-" -> ValNum (-n)
+        | "!" -> if n = 0 then ValNum 1 else ValNum 0
+        | _   -> failwith ("unsupported unary operator: " + op)
   // TODO: Add the correct handling of 'If' here!
+  | If(cond, tb, fb) ->
+    let vCond = evaluate ctx cond  
+    match vCond with
+    | ValNum c -> 
+      if c = 1 then 
+        evaluate ctx tb 
+      else 
+        evaluate ctx fb
 
 
 // ----------------------------------------------------------------------------
