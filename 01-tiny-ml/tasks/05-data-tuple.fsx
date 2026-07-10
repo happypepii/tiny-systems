@@ -52,7 +52,6 @@ let rec evaluate (ctx:VariableContext) e =
       | _ -> failwith ("unbound variable: " + v)
 
   // NOTE: You have the following from before
-  // NOTE: You have the following two from before
   | Unary(op, e) ->
       // TODO: Implement the case for 'Unary' here!
       let v = evaluate ctx e
