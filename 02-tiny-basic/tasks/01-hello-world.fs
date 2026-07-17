@@ -81,7 +81,7 @@ and runNextLine state line =
   
   match nextLine with
   | Some(l, e) -> runCommand state (l, e)
-  | _ -> "next line not found"
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Test cases
