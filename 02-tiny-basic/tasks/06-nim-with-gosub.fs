@@ -32,6 +32,7 @@ type State =
     Variables : Map<string, Value> 
     Random : System.Random 
     // TODO: Add a stack of line numbers to return to (list<int>)
+    ReturnStack : list<int>
     }
 
 // ----------------------------------------------------------------------------
@@ -133,7 +134,16 @@ let rec runCommand state (line, cmd) =
   // TODO: GOSUB needs to store the current line number on the stack for
   // RETURN (before behaving as GOTO); RETURN pops a line number from the
   // stack and runs the line after the one from the stack.
-  | GoSub _ | Return -> failwith "not implemented"
+  | GoSub (targetLine) -> 
+    let newState = { state with ReturnStack = line :: state.ReturnStack }
+    let foundLine = getLine newState targetLine
+    runCommand newState foundLine
+  | Return -> 
+    match state.ReturnStack with
+      | targetLine :: rest -> // pop the top element
+          let newState = { state with ReturnStack = rest }
+          runNextLine newState targetLine
+      | [] -> failwith "no line in stack"
 
 and runNextLine state line = 
   let nextLine = 
@@ -173,7 +183,7 @@ let (.=) a b = Function("=", [a; b])
 let (@) s args = Function(s, args)
 
 // TODO: Add empty stack of return line numbers here
-let empty = { Program = []; Variables = Map.empty; Random = System.Random() }
+let empty = { Program = []; Variables = Map.empty; Random = System.Random(); ReturnStack = [] }
 
 let nim = 
   [ Some 10, Assign("M", num 20)
