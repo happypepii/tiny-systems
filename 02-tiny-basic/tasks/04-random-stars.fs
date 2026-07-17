@@ -35,9 +35,22 @@ type State =
 // Utilities
 // ----------------------------------------------------------------------------
 
-let printValue value = failwith "implemented in steps 1 and 3"
-let getLine state line = failwith "implemented in step 1"
-let addLine state (line, cmd) = failwith "implemented in step 2"
+let printValue value = 
+  match value with
+  | StringValue s -> printf "%s" s
+  | NumberValue n -> printf "%d\n" n
+  | BoolValue b -> if b then printf "true\n" else printf "false\n"
+
+let getLine state line =
+  let exp = state.Program |> List.tryFind(fun(l, _) -> l = line)
+  match exp with
+  | Some(l, e) -> (l, e)
+  | _ -> failwith "No such line"
+
+let addLine state (line, cmd) = 
+  let filtered = state.Program |> List.filter (fun (l, _) -> l <> line)
+  let newList = (line, cmd) :: filtered |> List.sortBy fst
+  { state with Program = newList }
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -50,13 +63,20 @@ let binaryRelOp f args =
   | [NumberValue a; NumberValue b] -> BoolValue(f a b)
   | _ -> failwith "expected two numerical arguments"
 
-let rec evalExpression expr = 
-  // TODO: Add support for 'RND(N)' which returns a random number in range 0..N-1
-  // and for binary operators ||, <, > (and the ones you have already, i.e., - and =).
-  // To add < and >, you can use the 'binaryRelOp' helper above. You can similarly
-  // add helpers for numerical operators and binary Boolean operators to make
-  // your code a bit nicer.
-  failwith "implemented in steps 1 and 3"
+let rec evalExpression state expr = 
+  match expr with
+  | Const v -> v
+  | Function (fname, args) ->
+    let evaluatedArgs = args |> List.map (evalExpression state)
+
+    match fname, evaluatedArgs with
+    | "-", [NumberValue a; NumberValue b] -> NumberValue(a - b)
+    | "=", [a; b] -> BoolValue(a = b)
+    | _ -> failwith "unsupported function"
+  | Variable s -> 
+    match Map.tryFind s state.Variables with
+    | Some v -> v
+    | None -> failwith ("Undefined variable: " + s)
 
 let rec runCommand state (line, cmd) =
   match cmd with 
@@ -64,21 +84,51 @@ let rec runCommand state (line, cmd) =
       let first = List.head state.Program    
       runCommand state first
 
-  | Print(expr) -> failwith "implemented in step 1"
-  | Goto(line) -> failwith "implemented in step 1"
-  | Assign _ | If _ -> failwith "implemented in step 3"
+  | Print(expr) ->
+    let v  = evalExpression state expr
+      printValue v
+      runNextLine state line
+  | Goto(line) ->
+      let foundLine = getLine state line
+      runCommand state foundLine
+
+  | Assign (var, expr) ->
+    let v = evalExpression state expr
+    let newVars = Map.add var v state.Variables
+    let newState = { state with Variables = newVars }
+    runNextLine newState line
+
+  | If (cond, cmd) ->
+    let vc = evalExpression state cond
+    match vc with
+    | BoolValue true -> runCommand state (line, cmd)
+    | _ -> runNextLine state line
   
   // TODO: Implement two commands for screen manipulation
   | Clear | Poke _ -> failwith "not implemented"
 
-and runNextLine state line = failwith "implemented in step 1"
+and runNextLine state line = 
+  let nextLine = 
+    state.Program 
+    |> List.filter(fun(l, _) -> l > line) 
+    |> List.sortBy fst 
+    |> List.tryHead
+  
+  match nextLine with
+  | Some(l, e) -> runCommand state (l, e)
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
 // ----------------------------------------------------------------------------
 
-let runInput state (line, cmd) = failwith "implemented in step 2"
-let runInputs state cmds = failwith "implemented in step 2"
+let runInput state (line, cmd) = 
+  match line with
+  | Some ln -> addLine state (ln, cmd) 
+  | None -> runCommand state (System.Int32.MaxValue, cmd)
+
+let runInputs state cmds =
+  List.fold runInput state cmds
 
 // ----------------------------------------------------------------------------
 // Test cases
