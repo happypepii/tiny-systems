@@ -33,12 +33,16 @@ type State =
 
 let printValue value = 
   // TODO: Take 'value' of type 'Value', pattern match on it and print it nicely.
-  failwith "not implemented"
+  match value with
+  | StringValue s -> printf "%s" s
 
 let getLine state line =
   // TODO: Get a line with a given number from 'state.Program' (this can fail 
   // if the line is not there.) You need this in the 'Goto' command case below.
-  failwith "not implemented"
+  let exp = state.Program |> List.tryFind(fun(l, _) -> l = line)
+  match exp with
+  | Some(l, e) -> (l, e)
+  | _ -> failwith "No such line"
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -47,13 +51,15 @@ let getLine state line =
 let rec evalExpression expr = 
   // TODO: Implement evaluation of expressions. The function should take 
   // 'Expression' and return 'Value'. In this step, it is trivial :-)
-  failwith "not implemented"
+  match expr with
+  | Const v -> v
 
 let rec runCommand state (line, cmd) =
   match cmd with 
   | Print(expr) ->
       // TODO: Evaluate the expression and print the resulting value here!
-      failwith "not implemented"
+      let v  = evalExpression expr
+      printValue v
       runNextLine state line
   | Run ->
       let first = List.head state.Program    
@@ -61,12 +67,21 @@ let rec runCommand state (line, cmd) =
   | Goto(line) ->
       // TODO: Find the right line of the program using 'getLine' and call 
       // 'runCommand' recursively on the found line to evaluate it.
-      failwith "not implemented"
+      let foundLine = getLine state line
+      runCommand state foundLine
 
 and runNextLine state line = 
   // TODO: Find a program line with the number greater than 'line' and evalaute
   // it using 'runCommand' (if found) or just return 'state' (if not found).
-  failwith "not implemented"
+  let nextLine = 
+    state.Program 
+    |> List.filter(fun(l, _) -> l > line) 
+    |> List.sortBy fst 
+    |> List.tryHead
+  
+  match nextLine with
+  | Some(l, e) -> runCommand state (l, e)
+  | _ -> "next line not found"
 
 // ----------------------------------------------------------------------------
 // Test cases
