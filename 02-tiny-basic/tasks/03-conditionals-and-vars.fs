@@ -1,7 +1,7 @@
 ﻿// ----------------------------------------------------------------------------
 // 03 - Add variables, conditionals and integer values
 // ----------------------------------------------------------------------------
-module TinyBASIC
+// module TinyBASIC
 
 type Value =
   | StringValue of string
@@ -29,6 +29,7 @@ type Command =
 type State = 
   { Program : list<int * Command> 
     // TODO: Add variable context to the program state
+    Variables: Map<string, Value>
   }
 
 // ----------------------------------------------------------------------------
@@ -39,6 +40,8 @@ let printValue value =
   // TODO: Take 'value' of type 'Value', pattern match on it and print it nicely.
   match value with
   | StringValue s -> printf "%s" s
+  | NumberValue n -> printf "%d\n" n
+  | BoolValue b -> if b then printf "true\n" else printf "false\n"
 
 let getLine state line =
   // TODO: Get a line with a given number from 'state.Program' (this can fail 
@@ -61,7 +64,7 @@ let addLine state (line, cmd) =
 // Evaluator
 // ----------------------------------------------------------------------------
 
-let rec evalExpression expr = 
+let rec evalExpression state expr = 
   // TODO: Add support for 'Function' and 'Variable'. For now, handle just the two
   // functions we need, i.e. "-" (takes two numbers & returns a number) and "="
   // (takes two values and returns Boolean). Note that you can test if two
@@ -69,7 +72,19 @@ let rec evalExpression expr =
   //
   // HINT: You will need to pass the program state to 'evalExpression' 
   // in order to be able to handle variables!
-  failwith "implemented in step 1"
+  match expr with
+  | Const v -> v
+  | Function (fname, args) ->
+    let evaluatedArgs = args |> List.map (evalExpression state)
+
+    match fname, evaluatedArgs with
+    | "-", [NumberValue a; NumberValue b] -> NumberValue(a - b)
+    | "=", [a; b] -> BoolValue(a = b)
+    | _ -> failwith "unsupported function"
+  | Variable s -> 
+    match Map.tryFind s state.Variables with
+    | Some v -> v
+    | None -> failwith ("Undefined variable: " + s)
 
 let rec runCommand state (line, cmd) =
   match cmd with 
@@ -78,7 +93,7 @@ let rec runCommand state (line, cmd) =
       runCommand state first
   | Print(expr) ->
       // TODO: Evaluate the expression and print the resulting value here!
-      let v  = evalExpression expr
+      let v  = evalExpression state expr
       printValue v
       runNextLine state line
   | Goto(line) ->
@@ -95,7 +110,17 @@ let rec runCommand state (line, cmd) =
   //
   // HINT: If <e> evaluates to TRUE, you can call 'runCommand' recursively with
   // the command in the 'THEN' branch and the current line as the line number.
-  | Assign _ | If _ -> failwith "not implemented"
+  | Assign (var, expr) ->
+    let v = evalExpression state expr
+    let newVars = Map.add var v state.Variables
+    let newState = { state with Variables = newVars }
+    runNextLine newState line
+
+  | If (cond, cmd) ->
+    let vc = evalExpression state cond
+    match vc with
+    | BoolValue true -> runCommand state (line, cmd)
+    | _ -> runNextLine state line
 
 and runNextLine state line = 
   // TODO: Find a program line with the number greater than 'line' and evalaute
@@ -136,7 +161,10 @@ let runInputs state cmds =
 // Test cases
 // ----------------------------------------------------------------------------
 
-let empty = { Program = [] } // TODO: Add empty variables to the initial state!
+let empty = { 
+  Program = [] 
+  Variables = Map.empty
+} // TODO: Add empty variables to the initial state!
 
 let helloOnce = 
   [ Some 10, Print (Const (StringValue "HELLO WORLD\n")) 
