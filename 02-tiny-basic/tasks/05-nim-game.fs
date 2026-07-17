@@ -73,8 +73,8 @@ let rec evalExpression state expr =
     | "=", [a; b] -> BoolValue(a = b)
     | "RND", [NumberValue n] ->
       NumberValue(state.Random.Next(n))
-    | ">", [a; b] -> BoolValue(a>b)
-    | "<", [a; b] -> BoolValue(a<b)
+    | ">", args -> binaryRelOp (>) args
+    | "<", args -> binaryRelOp (<) args
     | "||", [BoolValue a; BoolValue b] -> BoolValue(a || b)
     | "MIN", [NumberValue a; NumberValue b] -> if a < b then NumberValue a else NumberValue b
     | _ -> failwith "unsupported function"
