@@ -39,7 +39,9 @@ let addLine state (line, cmd) =
   // a previous line (if there is one with the same number) and also ensure
   // that state.Program is sorted by the line number.
   // HINT: Use List.filter and List.sortBy. Use F# Interactive to test them!
-  failwith "not implemented"
+  let filtered = state.Program |> List.filter (fun (l, _) -> l <> line)
+  let newList = (line, cmd) :: filtered |> List.sortBy fst
+  { state with Program = newList }
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -79,7 +81,7 @@ and runNextLine state line =
   
   match nextLine with
   | Some(l, e) -> runCommand state (l, e)
-  | _ -> "next line not found"
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
@@ -93,14 +95,15 @@ let runInput state (line, cmd) =
   // 'runCommand' does not try to run anything afterwards, you can pass 
   // 'System.Int32.MaxValue' as the line number to it (or you could use -1
   // and handle that case specially in 'runNextLine')
-  failwith "not implemented"
-      
+  match line with
+  | Some ln -> addLine state (ln, cmd) 
+  | None -> runCommand state (System.Int32.MaxValue, cmd)
 
 let runInputs state cmds =
   // TODO: Apply all the specified commands to the program state using 'runInput'.
   // This is a one-liner if you use 'List.fold' which has the following type:
   //   ('State -> 'T -> 'State) -> 'State -> list<'T> -> 'State
-  failwith "not implemented" 
+  List.fold runInput state cmds
 
 // ----------------------------------------------------------------------------
 // Test cases
