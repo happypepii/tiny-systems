@@ -36,11 +36,26 @@ type State =
 // ----------------------------------------------------------------------------
 
 let printValue value = 
-  // TODO: Add support for printing NumberValue and BoolValue
-  failwith "implemented in step 1"
+  // TODO: Take 'value' of type 'Value', pattern match on it and print it nicely.
+  match value with
+  | StringValue s -> printf "%s" s
 
-let getLine state line = failwith "implemented in step 1"
-let addLine state (line, cmd) = failwith "implemented in step 2"
+let getLine state line =
+  // TODO: Get a line with a given number from 'state.Program' (this can fail 
+  // if the line is not there.) You need this in the 'Goto' command case below.
+  let exp = state.Program |> List.tryFind(fun(l, _) -> l = line)
+  match exp with
+  | Some(l, e) -> (l, e)
+  | _ -> failwith "No such line"
+
+let addLine state (line, cmd) = 
+  // TODO: Add a given line to the program state. This should overwrite 
+  // a previous line (if there is one with the same number) and also ensure
+  // that state.Program is sorted by the line number.
+  // HINT: Use List.filter and List.sortBy. Use F# Interactive to test them!
+  let filtered = state.Program |> List.filter (fun (l, _) -> l <> line)
+  let newList = (line, cmd) :: filtered |> List.sortBy fst
+  { state with Program = newList }
 
 // ----------------------------------------------------------------------------
 // Evaluator
@@ -61,9 +76,16 @@ let rec runCommand state (line, cmd) =
   | Run ->
       let first = List.head state.Program    
       runCommand state first
-
-  | Print(expr) -> failwith "implemented in step 1"
-  | Goto(line) -> failwith "implemented in step 1"
+  | Print(expr) ->
+      // TODO: Evaluate the expression and print the resulting value here!
+      let v  = evalExpression expr
+      printValue v
+      runNextLine state line
+  | Goto(line) ->
+      // TODO: Find the right line of the program using 'getLine' and call 
+      // 'runCommand' recursively on the found line to evaluate it.
+      let foundLine = getLine state line
+      runCommand state foundLine
   
   // TODO: Implement assignment and conditional. Assignment should run the
   // next line after setting the variable value. 'If' is a bit trickier:
@@ -75,14 +97,40 @@ let rec runCommand state (line, cmd) =
   // the command in the 'THEN' branch and the current line as the line number.
   | Assign _ | If _ -> failwith "not implemented"
 
-and runNextLine state line = failwith "implemented in step 1"
+and runNextLine state line = 
+  // TODO: Find a program line with the number greater than 'line' and evalaute
+  // it using 'runCommand' (if found) or just return 'state' (if not found).
+  let nextLine = 
+    state.Program 
+    |> List.filter(fun(l, _) -> l > line) 
+    |> List.sortBy fst 
+    |> List.tryHead
+  
+  match nextLine with
+  | Some(l, e) -> runCommand state (l, e)
+  | None -> state
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
 // ----------------------------------------------------------------------------
 
-let runInput state (line, cmd) = failwith "implemented in step 2"
-let runInputs state cmds = failwith "implemented in step 2"
+let runInput state (line, cmd) =
+  // TODO: Simulate what happens when the user enters a line of code in the 
+  // interactive terminal. If the 'line' number is 'Some ln', we want to 
+  // insert the line into the right location of the program (addLine); if it
+  // is 'None', then we want to run it immediately. To make sure that 
+  // 'runCommand' does not try to run anything afterwards, you can pass 
+  // 'System.Int32.MaxValue' as the line number to it (or you could use -1
+  // and handle that case specially in 'runNextLine')
+  match line with
+  | Some ln -> addLine state (ln, cmd) 
+  | None -> runCommand state (System.Int32.MaxValue, cmd)
+
+let runInputs state cmds =
+  // TODO: Apply all the specified commands to the program state using 'runInput'.
+  // This is a one-liner if you use 'List.fold' which has the following type:
+  //   ('State -> 'T -> 'State) -> 'State -> list<'T> -> 'State
+  List.fold runInput state cmds
 
 // ----------------------------------------------------------------------------
 // Test cases
