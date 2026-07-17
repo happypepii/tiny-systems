@@ -21,8 +21,18 @@ type State =
 // Utilities
 // ----------------------------------------------------------------------------
 
-let printValue value = failwith "implemented in step 1"
-let getLine state line = failwith "implemented in step 1"
+let printValue value = 
+  // TODO: Take 'value' of type 'Value', pattern match on it and print it nicely.
+  match value with
+  | StringValue s -> printf "%s" s
+
+let getLine state line =
+  // TODO: Get a line with a given number from 'state.Program' (this can fail 
+  // if the line is not there.) You need this in the 'Goto' command case below.
+  let exp = state.Program |> List.tryFind(fun(l, _) -> l = line)
+  match exp with
+  | Some(l, e) -> (l, e)
+  | _ -> failwith "No such line"
 
 let addLine state (line, cmd) = 
   // TODO: Add a given line to the program state. This should overwrite 
@@ -35,7 +45,11 @@ let addLine state (line, cmd) =
 // Evaluator
 // ----------------------------------------------------------------------------
 
-let rec evalExpression expr = failwith "implemented in step 1"
+let rec evalExpression expr = 
+  // TODO: Implement evaluation of expressions. The function should take 
+  // 'Expression' and return 'Value'. In this step, it is trivial :-)
+  match expr with
+  | Const v -> v
 
 let rec runCommand state (line, cmd) =
   match cmd with 
@@ -43,10 +57,29 @@ let rec runCommand state (line, cmd) =
       let first = List.head state.Program    
       runCommand state first
 
-  | Print(expr) -> failwith "implemented in step 1"
-  | Goto(line) -> failwith "implemented in step 1"
+  | Print(expr) ->
+      // TODO: Evaluate the expression and print the resulting value here!
+      let v  = evalExpression expr
+      printValue v
+      runNextLine state line
+  | Goto(line) ->
+      // TODO: Find the right line of the program using 'getLine' and call 
+      // 'runCommand' recursively on the found line to evaluate it.
+      let foundLine = getLine state line
+      runCommand state foundLine
 
-and runNextLine state line = failwith "implemented in step 1"
+and runNextLine state line = 
+  // TODO: Find a program line with the number greater than 'line' and evalaute
+  // it using 'runCommand' (if found) or just return 'state' (if not found).
+  let nextLine = 
+    state.Program 
+    |> List.filter(fun(l, _) -> l > line) 
+    |> List.sortBy fst 
+    |> List.tryHead
+  
+  match nextLine with
+  | Some(l, e) -> runCommand state (l, e)
+  | _ -> "next line not found"
 
 // ----------------------------------------------------------------------------
 // Interactive program editing
