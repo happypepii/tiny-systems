@@ -29,6 +29,7 @@ type State =
   { Program : list<int * Command> 
     Variables : Map<string, Value> 
     // TODO: You will need to include random number generator in the state!
+    Random : System.Random
     }
 
 // ----------------------------------------------------------------------------
@@ -72,6 +73,11 @@ let rec evalExpression state expr =
     match fname, evaluatedArgs with
     | "-", [NumberValue a; NumberValue b] -> NumberValue(a - b)
     | "=", [a; b] -> BoolValue(a = b)
+    | "RND", [NumberValue n] ->
+      NumberValue(state.Random.Next(n))
+    | ">", [a; b] -> BoolValue(a>b)
+    | "<", [a; b] -> BoolValue(a<b)
+    | "||", [BoolValue a; BoolValue b] -> BoolValue(a || b)
     | _ -> failwith "unsupported function"
   | Variable s -> 
     match Map.tryFind s state.Variables with
@@ -81,16 +87,16 @@ let rec evalExpression state expr =
 let rec runCommand state (line, cmd) =
   match cmd with 
   | Run ->
-      let first = List.head state.Program    
-      runCommand state first
+    let first = List.head state.Program    
+    runCommand state first
 
   | Print(expr) ->
     let v  = evalExpression state expr
-      printValue v
-      runNextLine state line
+    printValue v
+    runNextLine state line
   | Goto(line) ->
-      let foundLine = getLine state line
-      runCommand state foundLine
+    let foundLine = getLine state line
+    runCommand state foundLine
 
   | Assign (var, expr) ->
     let v = evalExpression state expr
@@ -105,7 +111,22 @@ let rec runCommand state (line, cmd) =
     | _ -> runNextLine state line
   
   // TODO: Implement two commands for screen manipulation
-  | Clear | Poke _ -> failwith "not implemented"
+  | Clear ->
+    System.Console.Clear()
+    runNextLine state line
+  | Poke(xExpr, yExpr, valExpr) ->
+    let x = evalExpression state xExpr
+    let y = evalExpression state yExpr
+    let v = evalExpression state valExpr
+    match x, y, v with
+      | NumberValue nx, NumberValue ny, StringValue str ->
+          try
+              System.Console.SetCursorPosition(int nx, int ny)
+              System.Console.Write(str)
+          with _ -> () // ignore if out of range
+          runNextLine state line
+      | _ -> failwith "Poke expects (Number, Number, String)"
+
 
 and runNextLine state line = 
   let nextLine = 
@@ -150,7 +171,7 @@ let (.-) a b = Function("-", [a; b])
 let (.=) a b = Function("=", [a; b])
 let (@) s args = Function(s, args)
 
-let empty = { Program = []; Variables = Map.empty } // TODO: Add random number generator!
+let empty = { Program = []; Variables = Map.empty; Random = System.Random() } // TODO: Add random number generator!
 
 // NOTE: Random stars generation. This has hard-coded max width and height (60x20)
 // but you could use 'System.Console.WindowWidth'/'Height' here to make it nicer.
