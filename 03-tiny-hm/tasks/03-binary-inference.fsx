@@ -21,15 +21,43 @@ type Type =
 // Constraint solving
 // ----------------------------------------------------------------------------
 
-let rec occursCheck vcheck ty = 
-  failwith "implemented in step 2"
-let rec substType (subst:Map<_, _>) t1 = 
-  failwith "implemented in step 2"
-let substConstrs subst cs = 
-  failwith "implemented in step 2"
+let rec occursCheck vcheck ty =
+  match ty with 
+  | TyVariable var -> var = vcheck
+  | TyBool -> false
+  | TyNumber -> false
+  | TyList t -> occursCheck vcheck t // check the inner part
+let rec substType (subst:Map<string, Type>) ty = 
+  match ty with 
+  | TyVariable var -> 
+    if Map.containsKey var subst then
+      subst.[var]
+    else
+      TyVariable var
+  | TyBool -> TyBool // do nothing
+  | TyNumber -> TyNumber // do nothing
+  | TyList t -> TyList(substType subst t) // check the inner part
+  
+
+let substConstrs (subst:Map<string, Type>) (cs:list<Type * Type>) = 
+  cs |> List.map(fun (l, r) -> substType subst l, substType subst r)
  
-let rec solve constraints =
-  failwith "implemente in step 2"
+
+let rec solve cs =
+  match cs with 
+  | [] -> []
+  | (TyNumber, TyNumber)::cs -> solve cs
+  | (TyBool, TyBool)::cs -> solve cs
+  | (TyList t1, TyList t2)::cs -> solve ((t1, t2)::cs)
+  | (TyVariable v, ty)::cs | (ty, TyVariable v)::cs ->
+    if occursCheck v ty then failwith "occurs check failed"
+    elif ty = TyVariable v then solve cs
+    else
+      let cs = substConstrs (Map.ofList [v, ty]) cs
+      let subst = solve cs
+      let ty = substType (Map.ofList subst) ty
+      (v, ty)::subst
+  | _ -> failwith "Cannot be solved"
 
 // ----------------------------------------------------------------------------
 // Constraint generation & inference
