@@ -26,19 +26,43 @@ type Type =
 
 let rec occursCheck vcheck ty = 
   // TODO: Add case for 'TyFunction' (need to check both nested types)
-  failwith "not implemented"
+  match ty with 
+  | TyVariable var -> var = vcheck
+  | TyBool -> false
+  | TyNumber -> false
+  | TyList t -> occursCheck vcheck t // check the inner part
 
 let rec substType (subst:Map<_, _>) t1 = 
   // TODO: Add case for 'TyFunction' (need to substitute in both nested types)
-  failwith "not implemented"
+  match t1 with 
+  | TyVariable var -> 
+    if Map.containsKey var subst then
+      subst.[var]
+    else
+      TyVariable var
+  | TyBool -> TyBool // do nothing
+  | TyNumber -> TyNumber // do nothing
+  | TyList t -> TyList(substType subst t) // check the inner part
 
 let substConstrs subst cs = 
-  failwith "implemented in step 2"
- 
+  cs |> List.map(fun (l, r) -> substType subst l, substType subst r) 
 let rec solve constraints =
   // TODO: Add case matching TyFunction(ta1, tb1) and TyFunction(ta2, tb2)
   // This generates two new constraints, equating the argument/return types.
-  failwith "not implemented"
+  match cs with 
+  | [] -> []
+  | (TyNumber, TyNumber)::cs -> solve cs
+  | (TyBool, TyBool)::cs -> solve cs
+  | (TyList t1, TyList t2)::cs -> solve ((t1, t2)::cs)
+  | (TyVariable v, ty)::cs | (ty, TyVariable v)::cs ->
+    if occursCheck v ty then failwith "occurs check failed"
+    elif ty = TyVariable v then solve cs
+    else
+      let cs = substConstrs (Map.ofList [v, ty]) cs
+      let subst = solve cs
+      let ty = substType (Map.ofList subst) ty
+      (v, ty)::subst
+  | _ -> failwith "Cannot be solved"
 
 
 // ----------------------------------------------------------------------------
