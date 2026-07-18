@@ -83,20 +83,26 @@ let rec generate (ctx:TypingContext) e =
 
   | Binary("=", e1, e2) ->
       // TODO: Similar to the case for '+' but returns 'TyBool'
-      failwith "not implemented"
+      let t1, v1 = generate ctx e1
+      let t2, v2 = generate ctx e2
+      TyBool, v1 @ v2 @ [ t1, t2 ] // can be anything as long as they have the same type
 
   | Binary(op, _, _) ->
       failwithf "Binary operator '%s' not supported." op
 
   | Variable v -> 
       // TODO: Just get the type of the variable from 'ctx' here.
-      failwith "not implemented"
+      let t = ctx.[v]
+      t, []
 
   | If(econd, etrue, efalse) ->
       // TODO: Call generate recursively on all three sub-expressions,
       // collect all constraints and add a constraint that (i) the type
       // of 'econd' is 'TyBool' and (ii) types of 'etrue' and 'efalse' match.
-      failwith "not implemented"
+      let t1, ec  = generate ctx econd
+      let t2, et = generate ctx etrue
+      let t3, ef = generate ctx efalse
+      t2, ec @ et @ ef @ [ t1, TyBool; t2, t3 ] 
 
 
 // ----------------------------------------------------------------------------
