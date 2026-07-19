@@ -34,9 +34,8 @@ let rec occursCheck vcheck ty =
   | TyBool -> false
   | TyNumber -> false
   | TyList t -> occursCheck vcheck t // check the inner part
-  | TyFunction (t1, t2) -> 
+  | TyFunction (t1, t2) | TyTuple (t1, t2) -> 
     occursCheck vcheck t1 || occursCheck vcheck t2
-  failwith "not implemented"
 
 let rec substType (subst:Map<_, _>) t1 = 
   // TODO: Add case for 'TyFunction' (need to substitute in both nested types)
@@ -50,7 +49,7 @@ let rec substType (subst:Map<_, _>) t1 =
   | TyNumber -> TyNumber // do nothing
   | TyList t -> TyList(substType subst t) // check the inner part
   | TyFunction (t1, t2) -> TyFunction(substType subst t1, substType subst t2)
-  failwith "not implemented"
+  | TyTuple (t1, t2) -> TyTuple(substType subst t1, substType subst t2)
 
 let substConstrs subst cs = 
   cs |> List.map(fun (l, r) -> substType subst l, substType subst r) 
@@ -73,8 +72,9 @@ let rec solve cs =
       (v, ty)::subst
   | (TyFunction(ta1, tb1), TyFunction(ta2, tb2))::cs ->
     solve ((ta1, ta2) :: (tb1, tb2) :: cs)
+  | (TyTuple(ta1, tb1), TyTuple(ta2, tb2))::cs ->
+    solve ((ta1, ta2) :: (tb1, tb2) :: cs)
   | _ -> failwith "Cannot be solved"
-  failwith "not implemented"
 
 
 // ----------------------------------------------------------------------------
@@ -150,14 +150,22 @@ let rec generate (ctx:TypingContext) e =
   
   | Tuple(e1, e2) ->
       // TODO: Easy. The returned type is composed of the types of 'e1' and 'e2'.
-      failwith "not implemented"
+      let te1, cs1 = generate ctx e1
+      let te2, cs2 = generate ctx e2
+      TyTuple(te1, te2), cs1 @ cs2
 
   | TupleGet(b, e) ->
       // TODO: Trickier. The type of 'e' is some tuple, but we do not know what.
       // We need to generate two new type variables and a constraint.
-      failwith "not implemented"
-
-  
+      // te = TyTuple(ta, tb)
+      let te, cs = generate ctx e
+      let ta = newTyVariable()
+      let tb = newTyVariable()
+      match b with
+      | true -> // get first element and tyoe
+        ta, (te, TyTuple(ta, tb)) :: cs
+      | false -> // get snd element and tyoe
+        tb, (te, TyTuple(ta, tb)) :: cs
 
 // ----------------------------------------------------------------------------
 // Putting it together & test cases
