@@ -97,21 +97,21 @@ let rec generate (ctx:TypingContext) e =
   | Binary("+", e1, e2) ->
       // NOTE: Recursively process sub-expressions, collect all the 
       // constraints and ensure the types of 'e1' and 'e2' are 'TyNumber'
-      let t1, s1 = generate ctx e1
-      let t2, s2 = generate ctx e2
-      TyNumber, s1 @ s2 @ [ t1, TyNumber; t2, TyNumber ]
+      let t1, cs1 = generate ctx e1
+      let t2, cs2 = generate ctx e2
+      TyNumber, cs1 @ cs2 @ [ t1, TyNumber; t2, TyNumber ]
 
   | Binary("=", e1, e2) ->
-      let t1, v1 = generate ctx e1
-      let t2, v2 = generate ctx e2
-      TyBool, v1 @ v2 @ [ t1, t2 ] // can be anything as long as they have the same type
+      let t1, cs1 = generate ctx e1
+      let t2, cs2 = generate ctx e2
+      TyBool, cs1 @ cs2 @ [ t1, t2 ] // can be anything as long as they have the same type
 
   | Binary("*", e1, e2) ->
       // NOTE: Recursively process sub-expressions, collect all the 
       // constraints and ensure the types of 'e1' and 'e2' are 'TyNumber'
-      let t1, s1 = generate ctx e1
-      let t2, s2 = generate ctx e2
-      TyNumber, s1 @ s2 @ [ t1, TyNumber; t2, TyNumber ]
+      let t1, cs1 = generate ctx e1
+      let t2, cs2 = generate ctx e2
+      TyNumber, cs1 @ cs2 @ [ t1, TyNumber; t2, TyNumber ]
 
   | Binary(op, _, _) ->
       failwithf "Binary operator '%s' not supported." op
@@ -121,16 +121,16 @@ let rec generate (ctx:TypingContext) e =
       t, []
 
   | If(econd, etrue, efalse) ->
-      let t1, ec  = generate ctx econd
-      let t2, et = generate ctx etrue
-      let t3, ef = generate ctx efalse
-      t2, ec @ et @ ef @ [ t1, TyBool; t2, t3 ] 
+      let t1, cs1  = generate ctx econd
+      let t2, cs2 = generate ctx etrue
+      let t3, cs3 = generate ctx efalse
+      t2, cs1 @ cs2 @ cs3 @ [ t1, TyBool; t2, t3 ] 
 
   | Let(v, e1, e2) ->
-      let t1, ev1 = generate ctx e1
+      let t1, cs1 = generate ctx e1
       let newCtx = Map.add v t1 ctx
-      let t2, ev2 = generate newCtx e2
-      t2, ev1 @ ev2
+      let t2, cs2 = generate newCtx e2
+      t2, cs1 @ cs2
   
   | Lambda(v, e) ->
       let targ = newTyVariable()
